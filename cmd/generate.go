@@ -20,6 +20,7 @@ import (
 type generateCmd struct {
 	files       string
 	contextName string
+	outputFile  string
 }
 
 type outputDefinitions struct {
@@ -68,6 +69,7 @@ func newGenerateCmd() *cobra.Command {
 
 	f := generateCmd.Flags()
 	f.StringVarP(&gc.contextName, "name", "n", "", "name of context to create, defaults to same as stack name")
+	f.StringVarP(&gc.outputFile, "output", "o", "spacelift_context.tf", "name of output file to create, defaults to spacelift_context.tf")
 
 	return generateCmd
 }
@@ -120,7 +122,7 @@ func (gc *generateCmd) run(args []string) error {
 
 	data := gc.buildContext(outputs)
 
-	err = ioutil.WriteFile("spacelift_context.tf", data, os.ModePerm)
+	err = ioutil.WriteFile(gc.outputFile, data, os.ModePerm)
 	if err != nil {
 		return err
 	}
