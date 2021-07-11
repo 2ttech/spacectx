@@ -136,17 +136,17 @@ func (gc *generateCmd) buildContext(outputs []*outputDefinitions) []byte {
 	file := hclwrite.NewEmptyFile()
 	body := file.Body()
 
-	contextBlock := body.AppendNewBlock("resource", []string{"spacelift_context", "main"})
+	contextBlock := body.AppendNewBlock("resource", []string{"spacelift_context", "outputs"})
 	contextBlock.Body().SetAttributeValue("name", cty.StringVal(gc.contextName))
 	contextBlock.Body().SetAttributeValue("description", cty.StringVal("Auto generated context by spacectx"))
 
-	fileBlock := body.AppendNewBlock("resource", []string{"spacelift_mounted_file", "main"})
+	fileBlock := body.AppendNewBlock("resource", []string{"spacelift_mounted_file", "outputs"})
 	fileBlock.Body().SetAttributeTraversal("context_id", hcl.Traversal{
 		hcl.TraverseRoot{
 			Name: "spacelift_context",
 		},
 		hcl.TraverseAttr{
-			Name: "main",
+			Name: "outputs",
 		},
 		hcl.TraverseAttr{
 			Name: "id",
