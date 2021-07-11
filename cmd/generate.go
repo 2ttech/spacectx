@@ -113,6 +113,11 @@ func (gc *generateCmd) run(args []string) error {
 		}
 	}
 
+	if len(outputs) == 0 {
+		log.Printf("No outputs defined, skipping.")
+		return nil
+	}
+
 	data := gc.buildContext(outputs)
 
 	err = ioutil.WriteFile("spacelift_context.tf", data, os.ModePerm)
