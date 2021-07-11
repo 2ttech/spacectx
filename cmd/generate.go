@@ -192,9 +192,6 @@ func (gc *generateCmd) buildContext(outputs []*outputDefinitions) *hclwrite.File
 		localsBlock.Body().SetAttributeRaw(fmt.Sprintf("out_%s", output.name), output.expr.BuildTokens(nil))
 	}
 
-	// gc.appendFileBlock(body, outputs, false, contextFileName, "out_sctx_content")
-	// gc.appendFileBlock(body, outputs, true, contextSecretsFileName, "out_sctx_content_secrets")
-
 	if checkIfAny(outputs, func(o *outputDefinitions) bool { return !o.sensitive }) {
 		gc.appendFileBlock(body, outputs, false, contextFileName, "out_sctx_content")
 	}
