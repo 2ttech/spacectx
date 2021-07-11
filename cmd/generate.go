@@ -156,7 +156,7 @@ func (gc *generateCmd) checkProviderRequirementsExists(body *hclwrite.Body) bool
 		if block.Type() == "terraform" {
 			for _, tBlock := range block.Body().Blocks() {
 				if tBlock.Type() == "required_providers" {
-					for name, _ := range tBlock.Body().Attributes() {
+					for name := range tBlock.Body().Attributes() {
 						if name == "spacelift" {
 							exists = true
 						}
