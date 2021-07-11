@@ -16,6 +16,11 @@ var (
 	debug bool
 )
 
+const (
+	contextFileName        = "ctx-%v.json"
+	contextSecretsFileName = "ctx-%v-secrets.json"
+)
+
 // NewRootCmd returns the root command for utility
 func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{

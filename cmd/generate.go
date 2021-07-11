@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -24,8 +25,9 @@ type generateCmd struct {
 }
 
 type outputDefinitions struct {
-	name string
-	expr *hclwrite.Expression
+	name      string
+	sensitive bool
+	expr      *hclwrite.Expression
 }
 
 var (
@@ -114,10 +116,13 @@ func (gc *generateCmd) run(args []string) error {
 		}
 
 		for _, block := range body.Blocks() {
+			blockBody := block.Body()
+
 			if block.Type() == "output" {
 				outputs = append(outputs, &outputDefinitions{
-					name: block.Labels()[0],
-					expr: block.Body().GetAttribute("value").Expr(),
+					name:      block.Labels()[0],
+					sensitive: checkSensitiveAttr(blockBody),
+					expr:      blockBody.GetAttribute("value").Expr(),
 				})
 			}
 		}
@@ -181,7 +186,27 @@ func (gc *generateCmd) buildContext(outputs []*outputDefinitions) *hclwrite.File
 	contextBlock.Body().SetAttributeValue("name", cty.StringVal(gc.contextName))
 	contextBlock.Body().SetAttributeValue("description", cty.StringVal("Auto generated context by spacectx"))
 
-	fileBlock := body.AppendNewBlock("resource", []string{"spacelift_mounted_file", "outputs"})
+	localsBlock := body.AppendNewBlock("locals", []string{})
+
+	for _, output := range outputs {
+		localsBlock.Body().SetAttributeRaw(fmt.Sprintf("out_%s", output.name), output.expr.BuildTokens(nil))
+	}
+
+	// gc.appendFileBlock(body, outputs, false, contextFileName, "out_sctx_content")
+	// gc.appendFileBlock(body, outputs, true, contextSecretsFileName, "out_sctx_content_secrets")
+
+	if checkIfAny(outputs, func(o *outputDefinitions) bool { return !o.sensitive }) {
+		gc.appendFileBlock(body, outputs, false, contextFileName, "out_sctx_content")
+	}
+	if checkIfAny(outputs, func(o *outputDefinitions) bool { return o.sensitive }) {
+		gc.appendFileBlock(body, outputs, true, contextSecretsFileName, "out_sctx_content_secrets")
+	}
+
+	return file
+}
+
+func (gc *generateCmd) appendFileBlock(body *hclwrite.Body, outputs []*outputDefinitions, sensitive bool, fileName string, localAttributeName string) {
+	fileBlock := body.AppendNewBlock("resource", []string{"spacelift_mounted_file", localAttributeName})
 	fileBlock.Body().SetAttributeTraversal("context_id", hcl.Traversal{
 		hcl.TraverseRoot{
 			Name: "spacelift_context",
@@ -193,29 +218,47 @@ func (gc *generateCmd) buildContext(outputs []*outputDefinitions) *hclwrite.File
 			Name: "id",
 		},
 	})
-	fileBlock.Body().SetAttributeValue("relative_path", cty.StringVal(fmt.Sprintf("ctx-%v.json", gc.contextName)))
+	fileBlock.Body().SetAttributeValue("relative_path", cty.StringVal(fmt.Sprintf(fileName, gc.contextName)))
+	fileBlock.Body().SetAttributeValue("write_only", cty.BoolVal(sensitive))
 	fileBlock.Body().SetAttributeTraversal("content", hcl.Traversal{
 		hcl.TraverseRoot{
 			Name: "local",
 		},
 		hcl.TraverseAttr{
-			Name: "out_sctx_content_encoded",
+			Name: localAttributeName,
 		},
 	})
 
-	localsBlock := body.AppendNewBlock("locals", []string{})
+	localsBlock := body.FirstMatchingBlock("locals", []string{})
 
-	for _, output := range outputs {
-		localsBlock.Body().SetAttributeRaw(fmt.Sprintf("out_%s", output.name), output.expr.BuildTokens(nil))
-	}
+	unencodedName := fmt.Sprintf("%s_raw", localAttributeName)
 
-	localsBlock.Body().SetAttributeRaw("out_sctx_content", localsContent(outputs).BuildTokens(nil))
-	localsBlock.Body().SetAttributeRaw("out_sctx_content_encoded", localsContentEncoded().BuildTokens(nil))
-
-	return file
+	localsBlock.Body().SetAttributeRaw(unencodedName, localsContent(outputs, sensitive).BuildTokens(nil))
+	localsBlock.Body().SetAttributeRaw(localAttributeName, localsContentEncoded(unencodedName).BuildTokens(nil))
 }
 
-func localsContent(outputs []*outputDefinitions) hclwrite.Tokens {
+func checkSensitiveAttr(body *hclwrite.Body) bool {
+	attr := body.GetAttribute("sensitive")
+	if attr == nil {
+		return false
+	}
+
+	// Only checking if it contains a single token which has value `true`
+	tokens := attr.Expr().BuildTokens(nil)
+	return len(tokens) == 1 && bytes.Equal(tokens[0].Bytes, []byte(`true`))
+}
+
+func checkIfAny(outputs []*outputDefinitions, pred func(*outputDefinitions) bool) bool {
+	for _, output := range outputs {
+		if pred(output) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func localsContent(outputs []*outputDefinitions, sensitive bool) hclwrite.Tokens {
 	localsContent := hclwrite.Tokens{
 		{
 			Type:         hclsyntax.TokenOBrace,
@@ -230,7 +273,9 @@ func localsContent(outputs []*outputDefinitions) hclwrite.Tokens {
 	}
 
 	for _, output := range outputs {
-		localsContent = append(localsContent, localsOutputContent(output.name)...)
+		if output.sensitive == sensitive {
+			localsContent = append(localsContent, localsOutputContent(output.name)...)
+		}
 	}
 
 	localsContent = append(localsContent, &hclwrite.Token{
@@ -282,7 +327,7 @@ func localsOutputContent(name string) hclwrite.Tokens {
 	}
 }
 
-func localsContentEncoded() hclwrite.Tokens {
+func localsContentEncoded(unencodedName string) hclwrite.Tokens {
 	return hclwrite.Tokens{
 		{
 			Type:         hclsyntax.TokenIdent,
@@ -316,7 +361,7 @@ func localsContentEncoded() hclwrite.Tokens {
 		},
 		{
 			Type:         hclsyntax.TokenIdent,
-			Bytes:        []byte(`out_sctx_content`),
+			Bytes:        []byte(unencodedName),
 			SpacesBefore: 0,
 		},
 		{
