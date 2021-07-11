@@ -104,8 +104,16 @@ func (gc *generateCmd) run(args []string) error {
 		return err
 	}
 
+	providerReqExists := false
+
 	for _, file := range files {
-		for _, block := range file.Body().Blocks() {
+		body := file.Body()
+
+		if gc.checkProviderRequirementsExists(body) {
+			providerReqExists = true
+		}
+
+		for _, block := range body.Blocks() {
 			if block.Type() == "output" {
 				outputs = append(outputs, &outputDefinitions{
 					name: block.Labels()[0],
@@ -120,9 +128,13 @@ func (gc *generateCmd) run(args []string) error {
 		return nil
 	}
 
-	data := gc.buildContext(outputs)
+	file := gc.buildContext(outputs)
 
-	err = ioutil.WriteFile(gc.outputFile, data, os.ModePerm)
+	if !providerReqExists {
+		gc.appendProviderRequirements(file)
+	}
+
+	err = ioutil.WriteFile(gc.outputFile, file.Bytes(), os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -132,7 +144,36 @@ func (gc *generateCmd) run(args []string) error {
 	return nil
 }
 
-func (gc *generateCmd) buildContext(outputs []*outputDefinitions) []byte {
+func (gc *generateCmd) checkProviderRequirementsExists(body *hclwrite.Body) bool {
+	exists := false
+
+	for _, block := range body.Blocks() {
+		if block.Type() == "terraform" {
+			for _, tBlock := range block.Body().Blocks() {
+				if tBlock.Type() == "required_providers" {
+					for name, _ := range tBlock.Body().Attributes() {
+						if name == "spacelift" {
+							exists = true
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return exists
+}
+
+func (gc *generateCmd) appendProviderRequirements(file *hclwrite.File) {
+	block := file.Body().AppendNewBlock("terraform", []string{})
+	providerBlock := block.Body().AppendNewBlock("required_providers", []string{})
+	providerBlock.Body().SetAttributeValue("spacelift", cty.ObjectVal(map[string]cty.Value{
+		"source":  cty.StringVal("spacelift-io/spacelift"),
+		"version": cty.StringVal("~> 0.0.5"),
+	}))
+}
+
+func (gc *generateCmd) buildContext(outputs []*outputDefinitions) *hclwrite.File {
 	file := hclwrite.NewEmptyFile()
 	body := file.Body()
 
@@ -171,7 +212,7 @@ func (gc *generateCmd) buildContext(outputs []*outputDefinitions) []byte {
 	localsBlock.Body().SetAttributeRaw("out_sctx_content", localsContent(outputs).BuildTokens(nil))
 	localsBlock.Body().SetAttributeRaw("out_sctx_content_encoded", localsContentEncoded().BuildTokens(nil))
 
-	return file.Bytes()
+	return file
 }
 
 func localsContent(outputs []*outputDefinitions) hclwrite.Tokens {
