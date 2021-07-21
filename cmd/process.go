@@ -6,6 +6,8 @@ import (
 )
 
 type processCmd struct {
+	outputFile    string
+	contextFolder string
 }
 
 var (
@@ -45,8 +47,9 @@ func newProcessCmd() *cobra.Command {
 		},
 	}
 
-	// f := processCmd.Flags()
-	// f.StringVarP(gc.contextName, "name", "n", "", "Name of context to create, defaults to same as stack name")
+	f := processCmd.Flags()
+	f.StringVarP(&pc.outputFile, "output", "o", "", "file to write processed result to. if not set it writes to stdout")
+	f.StringVarP(&pc.contextFolder, "source-folder", "s", "", "source folder to read context files from")
 
 	return processCmd
 }
