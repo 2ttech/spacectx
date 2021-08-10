@@ -15,3 +15,5 @@
 # vendor/
 
 *.tf
+ctx-*.json
+*.tfvars
