@@ -2,6 +2,8 @@
 
 > Easy and flexible context management for Spacelift CI/CD
 
+Spacectx offers another way to manage complex contexts in Spacelift CI/CD. Contexts in Spacelift is a bundle of configuration elements, either environment variables or mounted files. It offers a different way to share configuration between stacks. Terraform uses remote state data source to 
+
 Spacectx offers another way to manage complex contexts in Spacelift CI/CD. Contexts are a great way to share data between stacks instead of using remote data sources. It solves the problem of having to grant access to the state storage across environments and offers better control on which stacks are accessing which context.
 
 However, only supporting environment variables and mounted files it can be a bit complicated to replace remote data sources completely as they can store much more complex data structure. In addition, if a stack wants to create a spacelift context it needs to add those resources to the terraform configuration.
