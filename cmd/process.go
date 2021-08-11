@@ -84,7 +84,7 @@ func (pc *processCmd) init(args []string) error {
 		return errors.Errorf("Can only process tfvars files")
 	}
 
-	log.Debug("Output file: %s", pc.outputFile)
+	log.Debugf("Output file: %s", pc.outputFile)
 
 	return nil
 }
