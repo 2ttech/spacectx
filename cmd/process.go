@@ -77,7 +77,7 @@ func (pc *processCmd) init(args []string) error {
 
 	_, err := os.Lstat(fn)
 	if err != nil {
-		return errors.Errorf("Failed to stat %q", fn, err)
+		return errors.Wrapf(err, "Failed to stat %v", fn)
 	}
 
 	if !strings.HasSuffix(fn, ".tfvars") {
@@ -95,7 +95,7 @@ func (pc *processCmd) run(args []string) error {
 
 	src, err := ioutil.ReadFile(fn)
 	if err != nil {
-		return errors.Errorf("Failed to read file %v", fn, err)
+		return errors.Wrapf(err, "Failed to read file %v", fn)
 	}
 
 	parser := hclparse.NewParser()
@@ -228,12 +228,12 @@ func unmarshalFile(fn string) (cty.Value, error) {
 
 	_, err := os.Lstat(fn)
 	if err != nil {
-		return cty.NilVal, errors.Errorf("Failed to stat %q", fn, err)
+		return cty.NilVal, errors.Wrapf(err, "Failed to stat %q", fn)
 	}
 
 	src, err := ioutil.ReadFile(fn)
 	if err != nil {
-		return cty.NilVal, errors.Errorf("Failed to read file %v", fn, err)
+		return cty.NilVal, errors.Wrapf(err, "Failed to read file %v", fn)
 	}
 
 	ctype, err := json.ImpliedType(src)

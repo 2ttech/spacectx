@@ -23,7 +23,7 @@ func ReadFiles(fn string) ([]*hclwrite.File, error) {
 
 	info, err := os.Lstat(fn)
 	if err != nil {
-		return nil, errors.Errorf("Failed to stat %q", fn, err)
+		return nil, errors.Wrapf(err, "Failed to stat %q", fn)
 	}
 
 	if info.IsDir() {
@@ -47,16 +47,16 @@ func ReadFile(fn string) (*hclwrite.File, error) {
 
 	info, err := os.Lstat(fn)
 	if err != nil {
-		return nil, errors.Errorf("Failed to stat %q", fn, err)
+		return nil, errors.Wrapf(err, "Failed to stat %s", fn)
 	}
 
 	if info.IsDir() {
-		log.Debugf("Skipping %q: it is a directory", fn)
+		log.Debugf("Skipping %s: it is a directory", fn)
 		return nil, nil
 	}
 
 	if !info.Mode().IsRegular() {
-		log.Debugf("Skipping %q: not a regular file or directory", fn)
+		log.Debugf("Skipping %s: not a regular file or directory", fn)
 		return nil, nil
 	}
 	if !strings.HasSuffix(fn, ".tf") {
@@ -69,7 +69,7 @@ func ReadFile(fn string) (*hclwrite.File, error) {
 func processDir(fn string) ([]*hclwrite.File, error) {
 	entries, err := ioutil.ReadDir(fn)
 	if err != nil {
-		return nil, errors.Errorf("Failed to read directory %q: %s", fn, err)
+		return nil, errors.Wrapf(err, "Failed to read directory %s", fn)
 	}
 
 	files := []*hclwrite.File{}
@@ -91,7 +91,7 @@ func processDir(fn string) ([]*hclwrite.File, error) {
 func processFile(fn string) (*hclwrite.File, error) {
 	src, err := ioutil.ReadFile(fn)
 	if err != nil {
-		return nil, errors.Errorf("Failed to read file &q", fn, err)
+		return nil, errors.Wrapf(err, "Failed to read file %s", fn)
 	}
 
 	defer func() {
@@ -100,7 +100,7 @@ func processFile(fn string) (*hclwrite.File, error) {
 		}
 	}()
 
-	log.Debugf("Parsing hcl file %q", fn)
+	log.Debugf("Parsing hcl file %s", fn)
 	f, diags := hclwrite.ParseConfig(src, fn, hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		for _, diag := range diags {
