@@ -136,7 +136,12 @@ func (gc *generateCmd) run(args []string) error {
 	file := gc.buildContext(outputs)
 
 	if !providerReqExists {
-		gc.appendProviderRequirements(file)
+		providerFile := gc.buildProviderRequirements()
+
+		err = ioutil.WriteFile(spaceliftOverrideFile, providerFile.Bytes(), os.ModePerm)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = ioutil.WriteFile(gc.outputFile, file.Bytes(), os.ModePerm)
@@ -169,13 +174,17 @@ func (gc *generateCmd) checkProviderRequirementsExists(body *hclwrite.Body) bool
 	return exists
 }
 
-func (gc *generateCmd) appendProviderRequirements(file *hclwrite.File) {
+func (gc *generateCmd) buildProviderRequirements() *hclwrite.File {
+	file := hclwrite.NewEmptyFile()
+
 	block := file.Body().AppendNewBlock("terraform", []string{})
 	providerBlock := block.Body().AppendNewBlock("required_providers", []string{})
 	providerBlock.Body().SetAttributeValue("spacelift", cty.ObjectVal(map[string]cty.Value{
 		"source":  cty.StringVal("spacelift-io/spacelift"),
 		"version": cty.StringVal(fmt.Sprintf("~> %s", spaceliftProviderVersion)),
 	}))
+
+	return file
 }
 
 func (gc *generateCmd) buildContext(outputs []*outputDefinitions) *hclwrite.File {
