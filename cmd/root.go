@@ -17,8 +17,9 @@ var (
 )
 
 const (
-	contextFileName        = "ctx-%v.json"
-	contextSecretsFileName = "ctx-%v-secrets.json"
+	contextFileName          = "ctx-%v.json"
+	contextSecretsFileName   = "ctx-%v-secrets.json"
+	spaceliftProviderVersion = "0.1.0"
 )
 
 // NewRootCmd returns the root command for utility

@@ -174,7 +174,7 @@ func (gc *generateCmd) appendProviderRequirements(file *hclwrite.File) {
 	providerBlock := block.Body().AppendNewBlock("required_providers", []string{})
 	providerBlock.Body().SetAttributeValue("spacelift", cty.ObjectVal(map[string]cty.Value{
 		"source":  cty.StringVal("spacelift-io/spacelift"),
-		"version": cty.StringVal("~> 0.0.5"),
+		"version": cty.StringVal(fmt.Sprintf("~> %s", spaceliftProviderVersion)),
 	}))
 }
 
